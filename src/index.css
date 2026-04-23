@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+:root {
+  --sidebar-bg: #0B1120;
+  --sidebar-hover: #1E293B;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
+}

@@ -38,8 +38,28 @@ export default function Resources() {
   const openAdd  = () => { setEditing(null); setForm(EMPTY); setSelectedFile(null); setIsFormOpen(true); };
   const openEdit = (r) => { setEditing(r); setForm({ title: r.title, type: r.type, fileUrl: r.fileUrl, description: r.description || '' }); setSelectedFile(null); setIsFormOpen(true); };
 
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+
+  const getYoutubeId = (url) => {
+    if (!url) return null;
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+    return match ? match[1] : null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (form.type === 'youtube') {
+      if (form.fileUrl.includes('<iframe') || form.fileUrl.includes('/embed/')) {
+        toast({ message: 'Please enter a valid YouTube video link (not embed link)', type: 'error' });
+        return;
+      }
+      if (!getYoutubeId(form.fileUrl)) {
+        toast({ message: 'Invalid YouTube link format', type: 'error' });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       let finalFileUrl = form.fileUrl;
@@ -75,26 +95,6 @@ export default function Resources() {
       setDeleteTarget(null);
       fetchResources();
     } catch { toast({ message: 'Failed to delete', type: 'error' }); }
-  };
-
-  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
-
-  const handleUrlChange = (e) => {
-    let val = e.target.value;
-    if (form.type === 'youtube') {
-      const iframeMatch = val.match(/src="([^"]+)"/);
-      if (iframeMatch) val = iframeMatch[1];
-      else {
-        const match = val.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-        if (match && match[1]) val = `https://www.youtube.com/embed/${match[1]}`;
-      }
-    }
-    setForm(f => ({ ...f, fileUrl: val }));
-  };
-
-  const getYoutubeId = (url) => {
-    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-    return match ? match[1] : null;
   };
 
   return (
@@ -178,14 +178,14 @@ export default function Resources() {
           </FormField>
           {form.type === 'youtube' ? (
             <div className="space-y-3">
-              <FormField label="YouTube URL" hint="Paste the full YouTube link or iframe embed code">
-                <input required type="text" className={inputClass} placeholder="https://youtube.com/watch?v=… or <iframe...>" value={form.fileUrl} onChange={handleUrlChange} />
+              <FormField label="YouTube URL" hint="Paste the full YouTube link (e.g. https://youtu.be/...)">
+                <input required type="text" className={inputClass} placeholder="https://youtu.be/…" value={form.fileUrl} onChange={set('fileUrl')} />
               </FormField>
-              {form.fileUrl && (
+              {form.fileUrl && getYoutubeId(form.fileUrl) && (
                 <div className="overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-inner">
                   <div className="relative pt-[56.25%] w-full">
                     <iframe
-                      src={form.fileUrl}
+                      src={`https://www.youtube.com/embed/${getYoutubeId(form.fileUrl)}`}
                       className="absolute inset-0 h-full w-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen

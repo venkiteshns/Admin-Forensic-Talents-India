@@ -7,14 +7,26 @@ import Internships from './pages/Internships';
 import Quizzes from './pages/Quizzes';
 import Resources from './pages/Resources';
 
+// Protects admin routes from unauthenticated users
+const ProtectedRoute = ({ children }) => {
+  const isAuthenticated = !!localStorage.getItem('admin_token');
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Protects login page from authenticated users
+const PublicRoute = ({ children }) => {
+  const isAuthenticated = !!localStorage.getItem('admin_token');
+  return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
+};
+
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         
         {/* Protected Admin Routes */}
-        <Route path="/" element={<AdminLayout />}>
+        <Route path="/" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="courses" element={<Courses />} />

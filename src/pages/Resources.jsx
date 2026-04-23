@@ -24,6 +24,8 @@ export default function Resources() {
   const [editing, setEditing]           = useState(null);
   const [form, setForm]                 = useState(EMPTY);
   const [saving, setSaving]             = useState(false);
+  const [uploading, setUploading]       = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
   const { toasts, toast, removeToast }  = useToast();
 
   useEffect(() => { fetchResources(); }, []);
@@ -33,18 +35,36 @@ export default function Resources() {
     catch { toast({ message: 'Failed to load resources', type: 'error' }); }
   };
 
-  const openAdd  = () => { setEditing(null); setForm(EMPTY); setIsFormOpen(true); };
-  const openEdit = (r) => { setEditing(r); setForm({ title: r.title, type: r.type, fileUrl: r.fileUrl, description: r.description || '' }); setIsFormOpen(true); };
+  const openAdd  = () => { setEditing(null); setForm(EMPTY); setSelectedFile(null); setIsFormOpen(true); };
+  const openEdit = (r) => { setEditing(r); setForm({ title: r.title, type: r.type, fileUrl: r.fileUrl, description: r.description || '' }); setSelectedFile(null); setIsFormOpen(true); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      if (editing) { await api.put(`/resources/${editing._id}`, form); toast({ message: 'Resource updated' }); }
-      else         { await api.post('/resources', form);                toast({ message: 'Resource added' }); }
+      let finalFileUrl = form.fileUrl;
+      
+      if (selectedFile && (form.type === 'pdf' || form.type === 'image')) {
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        const uploadRes = await api.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        finalFileUrl = uploadRes.data.url;
+        setUploading(false);
+      }
+
+      const payload = { ...form, fileUrl: finalFileUrl };
+
+      if (editing) { await api.put(`/resources/${editing._id}`, payload); toast({ message: 'Resource updated' }); }
+      else         { await api.post('/resources', payload);               toast({ message: 'Resource added' }); }
       setIsFormOpen(false);
       fetchResources();
-    } catch { toast({ message: 'Failed to save resource', type: 'error' }); }
+    } catch { 
+      toast({ message: 'Failed to save resource', type: 'error' }); 
+      setUploading(false);
+    }
     finally { setSaving(false); }
   };
 
@@ -58,6 +78,24 @@ export default function Resources() {
   };
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+
+  const handleUrlChange = (e) => {
+    let val = e.target.value;
+    if (form.type === 'youtube') {
+      const iframeMatch = val.match(/src="([^"]+)"/);
+      if (iframeMatch) val = iframeMatch[1];
+      else {
+        const match = val.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+        if (match && match[1]) val = `https://www.youtube.com/embed/${match[1]}`;
+      }
+    }
+    setForm(f => ({ ...f, fileUrl: val }));
+  };
+
+  const getYoutubeId = (url) => {
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+    return match ? match[1] : null;
+  };
 
   return (
     <div className="space-y-6">
@@ -138,16 +176,75 @@ export default function Resources() {
               <option value="youtube">YouTube Video</option>
             </select>
           </FormField>
-          <FormField label={URL_LABEL[form.type] || 'Resource File / Link'} hint="Paste the full URL of the resource">
-            <input required type="url" className={inputClass} placeholder={URL_PLACEHOLDER[form.type]} value={form.fileUrl} onChange={set('fileUrl')} />
-          </FormField>
+          {form.type === 'youtube' ? (
+            <div className="space-y-3">
+              <FormField label="YouTube URL" hint="Paste the full YouTube link or iframe embed code">
+                <input required type="text" className={inputClass} placeholder="https://youtube.com/watch?v=… or <iframe...>" value={form.fileUrl} onChange={handleUrlChange} />
+              </FormField>
+              {form.fileUrl && (
+                <div className="overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-inner">
+                  <div className="relative pt-[56.25%] w-full">
+                    <iframe
+                      src={form.fileUrl}
+                      className="absolute inset-0 h-full w-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <FormField label={URL_LABEL[form.type]} hint={editing ? "Leave blank to keep existing file, or select a new one" : "Select a file to upload"}>
+                <input 
+                  type="file" 
+                  required={!editing && !form.fileUrl}
+                  accept={form.type === 'pdf' ? 'application/pdf' : 'image/*'}
+                  onChange={(e) => setSelectedFile(e.target.files[0])}
+                  className="w-full text-sm text-slate-400 file:mr-4 file:rounded-lg file:border-0 file:bg-amber-900/30 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-amber-400 hover:file:bg-amber-900/50 cursor-pointer" 
+                />
+              </FormField>
+              
+              {/* LIVE PREVIEW BLOCK */}
+              {(selectedFile || form.fileUrl) && (
+                <div className="mt-3 overflow-hidden rounded-xl border border-slate-700 bg-slate-800/50 p-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</p>
+                  
+                  {form.type === 'image' ? (
+                    <div className="flex justify-center">
+                      <img 
+                        src={selectedFile ? URL.createObjectURL(selectedFile) : form.fileUrl} 
+                        alt="Preview" 
+                        className="max-h-48 w-full rounded-lg object-cover shadow-md"
+                      />
+                    </div>
+                  ) : form.type === 'pdf' ? (
+                    <div className="flex items-center gap-4 rounded-lg bg-slate-900 p-4 shadow-inner border border-slate-700/50">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-900/20">
+                        <FileText className="h-6 w-6 text-red-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-200">
+                          {selectedFile ? selectedFile.name : form.fileUrl.split('/').pop()}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'PDF Document'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
           <FormField label="Description (optional)">
             <textarea rows={3} className={inputClass} placeholder="Short description…" value={form.description} onChange={set('description')} />
           </FormField>
           <div className="flex justify-end gap-3 border-t border-slate-700 pt-4">
             <button type="button" onClick={() => setIsFormOpen(false)} className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 transition-colors hover:bg-slate-700">Cancel</button>
-            <button type="submit" disabled={saving} className="rounded-lg bg-amber-700 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-50">
-              {saving ? 'Saving…' : editing ? 'Save Changes' : 'Add Resource'}
+            <button type="submit" disabled={saving || uploading} className="rounded-lg bg-amber-700 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-50">
+              {uploading ? 'Uploading…' : saving ? 'Saving…' : editing ? 'Save Changes' : 'Add Resource'}
             </button>
           </div>
         </form>

@@ -28,28 +28,30 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     ['admin_token', 'admin_name', 'admin_email'].forEach(k => localStorage.removeItem(k));
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   const SidebarContent = ({ mobile = false }) => (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className={`flex items-center gap-3 border-b border-slate-700/60 ${collapsed && !mobile ? 'justify-center px-3 py-4' : 'px-5 py-4'}`}>
-        <img
-          src="/logo.png"
-          alt="Forensic Talents"
-          className={`object-contain flex-shrink-0 transition-all duration-300 ${collapsed && !mobile ? 'h-9 w-9' : 'h-12 w-12'}`}
-        />
+      <div className={`flex flex-col items-center gap-3 border-b border-slate-700/60 pb-5 pt-6 ${collapsed && !mobile ? 'px-2' : 'px-5'}`}>
+        <div className="relative flex w-full justify-center">
+          <img
+            src="/logo.png"
+            alt="Forensic Talents"
+            className={`object-contain flex-shrink-0 transition-all duration-300 ${collapsed && !mobile ? 'h-10' : 'h-12'}`}
+          />
+          {mobile && (
+            <button onClick={() => setMobileSidebarOpen(false)} className="absolute right-0 top-0 text-slate-500 hover:text-white transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+          )}
+        </div>
         {(!collapsed || mobile) && (
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-white leading-tight">Forensic Talents</p>
-            <p className="truncate text-[10px] text-slate-500">India Admin Panel</p>
+          <div className="text-center">
+            <p className="text-sm font-bold text-white tracking-wide">Forensic Talents India</p>
+            <p className="mt-0.5 text-xs font-medium text-slate-400">Admin Panel</p>
           </div>
-        )}
-        {mobile && (
-          <button onClick={() => setMobileSidebarOpen(false)} className="ml-auto text-slate-500 hover:text-white transition-colors">
-            <X className="h-5 w-5" />
-          </button>
         )}
       </div>
 

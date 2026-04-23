@@ -21,7 +21,7 @@ export default function Login() {
         localStorage.setItem('admin_token', data.token);
         localStorage.setItem('admin_name',  data.admin.name);
         localStorage.setItem('admin_email', data.admin.email);
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
         setError(data.message || 'Invalid credentials.');
       }
@@ -37,12 +37,12 @@ export default function Login() {
       <div className="w-full max-w-md">
 
         {/* Logo + Title */}
-        <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-800 border border-slate-700 shadow-xl">
-            <img src="/logo.png" alt="Forensic Talents" className="h-14 w-14 object-contain" />
+        <div className="mb-10 flex flex-col items-center text-center">
+          <div className="mb-5 flex items-center justify-center">
+            <img src="/logo.png" alt="Forensic Talents" className="h-[72px] object-contain drop-shadow-xl" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Admin Portal</h1>
-          <p className="mt-1 text-sm text-slate-400">Forensic Talents India</p>
+          <p className="mt-1.5 text-sm font-medium text-slate-400">Forensic Talents India</p>
         </div>
 
         {/* Card */}

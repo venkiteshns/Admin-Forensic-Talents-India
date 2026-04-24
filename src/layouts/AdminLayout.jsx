@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, UserCheck, HelpCircle,
-  FolderOpen, LogOut, Menu, ChevronLeft, ChevronRight, X
+  FolderOpen, LogOut, Menu, ChevronLeft, ChevronRight, X, AlertTriangle
 } from 'lucide-react';
+import api from '../utils/api';
 
 const navItems = [
   { name: 'Dashboard',   path: '/dashboard',  icon: LayoutDashboard },
@@ -19,6 +20,8 @@ export default function AdminLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
+  const [expiredCountdown, setExpiredCountdown] = useState(null);
+
   const adminName  = localStorage.getItem('admin_name')  || 'Admin';
   const adminEmail = localStorage.getItem('admin_email') || '';
   const initials   = adminName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
@@ -26,8 +29,32 @@ export default function AdminLayout() {
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/login'); }, [navigate]);
   useEffect(() => { setMobileSidebarOpen(false); }, [location.pathname]);
 
-  const handleLogout = () => {
-    ['admin_token', 'admin_name', 'admin_email'].forEach(k => localStorage.removeItem(k));
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      if (expiredCountdown !== null) return;
+      setExpiredCountdown(5);
+      ['admin_token', 'admin_refresh_token', 'admin_name', 'admin_email'].forEach(k => localStorage.removeItem(k));
+    };
+    window.addEventListener('session-expired', handleSessionExpired);
+    return () => window.removeEventListener('session-expired', handleSessionExpired);
+  }, [expiredCountdown]);
+
+  useEffect(() => {
+    if (expiredCountdown === null) return;
+    if (expiredCountdown <= 0) {
+      navigate('/login', { replace: true });
+      return;
+    }
+    const timer = setTimeout(() => setExpiredCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [expiredCountdown, navigate]);
+
+  const handleLogout = async () => {
+    try {
+      const refreshToken = localStorage.getItem('admin_refresh_token');
+      if (refreshToken) await api.post('/auth/logout', { refreshToken });
+    } catch (err) {}
+    ['admin_token', 'admin_refresh_token', 'admin_name', 'admin_email'].forEach(k => localStorage.removeItem(k));
     navigate('/login', { replace: true });
   };
 
@@ -160,6 +187,21 @@ export default function AdminLayout() {
           <Outlet />
         </main>
       </div>
+
+      {expiredCountdown !== null && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-700 bg-[#1e293b] p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-900/30">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+            </div>
+            <h3 className="mb-2 text-lg font-bold text-white">Session Expired</h3>
+            <p className="mb-6 text-sm text-slate-400">Your session has expired. Please log in again to continue.</p>
+            <div className="rounded-lg bg-slate-800/50 py-3">
+              <p className="text-sm font-medium text-slate-300">Redirecting in {expiredCountdown} seconds...</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

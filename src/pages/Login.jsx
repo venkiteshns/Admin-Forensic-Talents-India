@@ -19,6 +19,7 @@ export default function Login() {
       const { data } = await api.post('/auth/login', { email, password });
       if (data.success) {
         localStorage.setItem('admin_token', data.token);
+        localStorage.setItem('admin_refresh_token', data.refreshToken);
         localStorage.setItem('admin_name',  data.admin.name);
         localStorage.setItem('admin_email', data.admin.email);
         navigate('/dashboard', { replace: true });

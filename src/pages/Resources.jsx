@@ -42,7 +42,7 @@ export default function Resources() {
 
   const getYoutubeId = (url) => {
     if (!url) return null;
-    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
     return match ? match[1] : null;
   };
 
@@ -126,6 +126,8 @@ export default function Resources() {
           {resources.map(r => {
             const cfg = TYPE_CFG[r.type] || TYPE_CFG.pdf;
             const { Icon } = cfg;
+            const ytid = r.type === 'youtube' ? getYoutubeId(r.fileUrl) : null;
+            
             return (
               <div key={r._id} className={`flex flex-col overflow-hidden rounded-2xl border ${cfg.border} bg-[#1e293b] transition-all duration-200 hover:border-slate-600 hover:shadow-lg hover:shadow-black/20`}>
                 {/* Type header */}
@@ -136,14 +138,32 @@ export default function Resources() {
                   <span className={`text-xs font-bold uppercase tracking-widest ${cfg.color}`}>{cfg.label}</span>
                 </div>
 
+                {/* Preview Section */}
+                <div className="w-full bg-slate-900/50 border-b border-slate-700/50 flex justify-center items-center overflow-hidden">
+                  {r.type === 'image' && (
+                    <img src={r.fileUrl} alt={r.title} className="w-full h-40 object-cover" />
+                  )}
+                  {r.type === 'youtube' && ytid && (
+                    <img src={`https://img.youtube.com/vi/${ytid}/hqdefault.jpg`} alt={r.title} className="w-full h-40 object-cover" />
+                  )}
+                  {r.type === 'pdf' && (
+                    <div className="w-full h-40 flex flex-col justify-center items-center text-slate-500">
+                      <FileText className="h-12 w-12 mb-2 text-red-400/50" />
+                      <span className="text-xs truncate max-w-[80%] px-4">{r.fileUrl.split('/').pop()}</span>
+                    </div>
+                  )}
+                </div>
+
                 {/* Body */}
                 <div className="flex flex-1 flex-col p-5">
                   <h3 className="font-semibold text-slate-100 leading-snug">{r.title}</h3>
                   {r.description && <p className="mt-1.5 line-clamp-2 text-xs text-slate-500">{r.description}</p>}
-                  <a href={r.fileUrl} target="_blank" rel="noreferrer"
-                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-slate-200">
+                  <a href={r.type === 'pdf' || r.type === 'image' ? (r.fileUrl && r.fileUrl.includes('/upload/') ? r.fileUrl.replace('/upload/', '/upload/fl_attachment/') : r.fileUrl) : r.fileUrl} 
+                    target="_blank" rel="noopener noreferrer" download={r.type === 'pdf' || r.type === 'image'}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-slate-200"
+                  >
                     <ExternalLink className="h-3.5 w-3.5" />
-                    {r.type === 'youtube' ? 'Watch Video' : r.type === 'image' ? 'View Image' : 'Open PDF'}
+                    {r.type === 'youtube' ? 'Watch Video' : r.type === 'image' ? 'Download Image' : 'Download PDF'}
                   </a>
                 </div>
 

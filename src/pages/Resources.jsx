@@ -68,9 +68,7 @@ export default function Resources() {
         setUploading(true);
         const formData = new FormData();
         formData.append('file', selectedFile);
-        const uploadRes = await api.post('/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const uploadRes = await api.post('/upload', formData);
         finalFileUrl = uploadRes.data.url;
         setUploading(false);
       }
@@ -81,8 +79,13 @@ export default function Resources() {
       else         { await api.post('/resources', payload);               toast({ message: 'Resource added' }); }
       setIsFormOpen(false);
       fetchResources();
-    } catch { 
-      toast({ message: 'Failed to save resource', type: 'error' }); 
+    } catch (err) { 
+      const msg = err.response?.data?.message || 'Failed to save resource';
+      if (msg.includes('already exists')) {
+        toast({ message: 'Upload failed. A file with the same name may already exist. Please try again with a different file name.', type: 'error' });
+      } else {
+        toast({ message: msg, type: 'error' }); 
+      }
       setUploading(false);
     }
     finally { setSaving(false); }
